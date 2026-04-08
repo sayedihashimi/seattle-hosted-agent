@@ -94,7 +94,43 @@ However, this requires `foundry.AddProject()` which creates a "capability host" 
 ### Recommendation
 The Aspire Foundry hosting integration's `AddProject()` / capability host provisioning needs better error messages and documentation about VNet requirements. For now, manual deployment with `azd ai agent deploy` is more reliable.
 
-## 7. Comparison: ACA vs Foundry Hosted Agent
+## 7. Foundry Capability Host Provisioning Failure (BLOCKER)
+
+### The Problem
+Deploying to Foundry Agent Service requires a "capability host" resource (`capabilityHosts@2025-10-01-preview`). This resource consistently fails to provision with the error:
+
+> `CapabilityHostOperationFailed: The environment network configuration is invalid: Invalid vnet resource ID provided, or the virtual network could not be found.`
+
+or simply:
+
+> `CapabilityHostOperationFailed: Capability host operation failed`
+
+### What We Tried
+1. **Aspire `AddFoundry().AddProject()`** — Failed with VNet error during `azd up`
+2. **Custom Bicep with `enableCapabilityHost: true`** — Same VNet error
+3. **Reference project Bicep** (from `azd ai agent init` template) with `enablePublicHostingEnvironment: true` — Same error
+4. **Fresh resource group + purged soft-deleted accounts** — Still fails
+5. **Multiple attempts across different azd environments** — All fail at capability host step
+
+### Environment
+- Subscription: MSDN (Visual Studio Ultimate)
+- Region: eastus2
+- The Bicep sets `enablePublicHostingEnvironment: true` which should bypass VNet requirements
+
+### Impact
+- The hosted agent works perfectly **locally** on port 8088 (Responses protocol verified)
+- Cannot deploy to Foundry Agent Service — the capability host is a hard requirement
+- The ACA deployment path works fine as an alternative
+
+### Possible Causes
+- MSDN subscriptions may not support the capability host preview feature
+- The `capabilityHosts@2025-10-01-preview` API may have region-specific limitations
+- Soft-deleted resources may leave behind state that conflicts even after purging
+
+### Recommendation for Users
+Until this is resolved, use the **ACA deployment path** (`sample-aca`) for Azure deployment. The hosted agent can still be tested locally using `dotnet run`.
+
+## 8. Comparison: ACA vs Foundry Hosted Agent
 
 | Aspect | ACA (SeattleHotelAgent) | Hosted (SeattleHotelAgent.Hosted) |
 |---|---|---|
