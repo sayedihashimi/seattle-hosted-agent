@@ -1,6 +1,6 @@
 # Build an AI Hotel Booking Agent with .NET Aspire and Azure AI Foundry
 
-In this tutorial we will build an AI-powered hotel booking agent using C#, .NET Aspire, and Azure AI Foundry. The agent can search for hotels, check availability, and book rooms in Seattle using natural language. To get started you will need the [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0), the [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli), and the [Azure Developer CLI (azd)](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd). The completed code for this tutorial can be found at [seattle-hosted-agent](https://github.com/sayedihashimi/seattle-hosted-agent).
+In this tutorial we will build an AI-powered hotel booking agent using C#, .NET Aspire, and Azure AI Foundry. The agent can search for hotels, check availability, and book rooms in Seattle using natural language. To get started you will need the [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0), the [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli), and the [Azure Developer CLI (azd)](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd). The completed code for this tutorial can be found at [foundry-agent-quickstart](https://github.com/sayedihashimi/foundry-agent-quickstart).
 
 In this tutorial we will cover the following.
 
@@ -169,7 +169,7 @@ public record AgentResponse
 }
 ```
 
-Next, create **HotelData.cs** in the Models folder with fake Seattle hotel data. For this tutorial the data is stored in-memory. Below is a shortened version showing two of the eight hotels. The full file with all eight hotels is available in the [source repository](https://github.com/sayedihashimi/seattle-hosted-agent/blob/main/src/SeattleHotelAgent/SeattleHotelAgent.Api/Models/HotelData.cs).
+Next, create **HotelData.cs** in the Models folder with fake Seattle hotel data. For this tutorial the data is stored in-memory. Below is a shortened version showing two of the eight hotels. The full file with all eight hotels is available in the [source repository](https://github.com/sayedihashimi/foundry-agent-quickstart/blob/main/src/sample-aca/SeattleHotelAgent.Api/Models/HotelData.cs).
 
 **Models/HotelData.cs**
 
@@ -566,3 +566,6 @@ The key technologies we used are summarized below.
 | [DefaultAzureCredential](https://learn.microsoft.com/dotnet/azure/sdk/authentication) | Keyless authentication |
 
 We encourage you to extend the agent with additional features, such as conversation history, persistent storage, or additional tools. We would love to hear your feedback. If you have any questions or suggestions, please leave a comment below.
+
+
+

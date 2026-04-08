@@ -128,7 +128,7 @@ Without IDs, the model can't call `GetHotelDetails(hotelId)` or `BookRoom(hotelI
 
 ### Using azd with Aspire
 ```bash
-cd src/SeattleHotelAgent
+cd src/sample-aca
 azd init --from-code              # Detects Aspire project
 azd env set AZURE_LOCATION eastus2
 azd up                            # Provisions + deploys
@@ -191,3 +191,4 @@ The deployed container app needs a managed identity to authenticate with the Fou
 
 - `ChatResponse` exists in both `Microsoft.Extensions.AI` and your models — rename yours to `AgentResponse` or similar.
 - `ChatRequest` has no conflicts in MEAI but might in other libraries.
+

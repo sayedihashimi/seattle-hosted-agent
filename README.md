@@ -4,8 +4,8 @@ An AI-powered hotel booking agent built with C#, .NET Aspire, and Azure AI Found
 
 ## What's Inside
 
-- **`src/SeattleHotelAgent.Hosted/`** — Hosted Agent version: Foundry Agent Service using the Responses protocol
-- **`src/SeattleHotelAgent/`** — ACA version: .NET 10 Aspire app with custom REST API endpoints
+- **`src/sample-hosted-agent/`** — Hosted Agent version: Foundry Agent Service using the Responses protocol
+- **`src/sample-aca/`** — ACA version: .NET 10 Aspire app with custom REST API endpoints
 - **`tutorials/`** — Step-by-step Quick Start tutorials for both approaches
 
 ## Quick Start
@@ -24,7 +24,7 @@ Follow one of the tutorials, or jump straight into the code:
 ### Run Locally
 
 ```bash
-cd src/SeattleHotelAgent
+cd src/sample-aca
 
 # Set your Foundry endpoint (replace with your resource)
 export ConnectionStrings__chat="Endpoint=https://YOUR-RESOURCE.cognitiveservices.azure.com;DeploymentId=chat"
@@ -62,3 +62,4 @@ Invoke-RestMethod -Uri "http://localhost:PORT/api/chat" -Method Post `
 ## License
 
 See [LICENSE](LICENSE) for details.
+

@@ -23,7 +23,7 @@ A .NET 10 Aspire app with an Azure AI Foundry-powered hotel booking assistant fo
 
 ```bash
 az login
-cd src/SeattleHotelAgent
+cd src/sample-aca
 
 # Option A: Using azd (auto-provisions everything)
 azd init --from-code
@@ -80,7 +80,7 @@ export AzureAI__TenantId=YOUR-TENANT-ID
 ### 3. Run Locally
 
 ```bash
-cd src/SeattleHotelAgent
+cd src/sample-aca
 dotnet run --project SeattleHotelAgent.AppHost
 ```
 
@@ -139,7 +139,7 @@ The agent has access to these C# functions:
 ## Project Structure
 
 ```
-src/SeattleHotelAgent/
+src/sample-aca/
 ├── SeattleHotelAgent.sln
 ├── azure.yaml
 ├── SeattleHotelAgent.AppHost/          # Aspire orchestrator
@@ -161,3 +161,4 @@ src/SeattleHotelAgent/
 
 **Aspire app starts but API doesn't launch**
 → If using `AddFoundry().AddDeployment()` pattern, Aspire blocks while provisioning. Switch to `AddConnectionString("chat")` for local dev.
+

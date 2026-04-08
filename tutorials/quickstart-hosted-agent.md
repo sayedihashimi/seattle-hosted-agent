@@ -1,6 +1,6 @@
 # Build a Foundry Hosted Agent with .NET Aspire and the Responses Protocol
 
-In this tutorial we will build a hotel booking agent that runs as a Foundry Hosted Agent using the OpenAI Responses protocol. This is a companion to the [ACA-based tutorial](quickstart-aca.md) — it uses the same hotel data and tools, but instead of custom REST endpoints, the agent implements the [Responses protocol](https://platform.openai.com/docs/api-reference/responses) via the Azure AI AgentServer framework. The completed code for this tutorial can be found at [seattle-hosted-agent](https://github.com/sayedihashimi/seattle-hosted-agent).
+In this tutorial we will build a hotel booking agent that runs as a Foundry Hosted Agent using the OpenAI Responses protocol. This is a companion to the [ACA-based tutorial](quickstart-aca.md) — it uses the same hotel data and tools, but instead of custom REST endpoints, the agent implements the [Responses protocol](https://platform.openai.com/docs/api-reference/responses) via the Azure AI AgentServer framework. The completed code for this tutorial can be found at [foundry-agent-quickstart](https://github.com/sayedihashimi/foundry-agent-quickstart).
 
 In this tutorial we will cover the following.
 
@@ -89,7 +89,7 @@ mkdir SeattleHotelAgent.Hosted.Agent/Models
 mkdir SeattleHotelAgent.Hosted.Agent/Tools
 ```
 
-Copy the following files from the ACA tutorial (or from the [source repository](https://github.com/sayedihashimi/seattle-hosted-agent)):
+Copy the following files from the ACA tutorial (or from the [source repository](https://github.com/sayedihashimi/foundry-agent-quickstart)):
 
 - **Models/HotelModels.cs** — Hotel, Room, and other record types
 - **Models/HotelData.cs** — 8 fake Seattle hotels with rooms, amenities, and pricing
@@ -285,4 +285,6 @@ In this tutorial we created a Foundry Hosted Agent using the AgentServer framewo
 | [DefaultAzureCredential](https://learn.microsoft.com/dotnet/azure/sdk/authentication) | Keyless authentication |
 
 For a comparison of the two approaches (ACA vs Hosted Agent), see the [learnings document](../learnings/foundry-hosted-agent-learnings.md).
+
+
 
