@@ -25,9 +25,13 @@ public class IndexModel(AgentService agentService) : PageModel
         if (string.IsNullOrWhiteSpace(userMessage))
             return Page();
 
+        // Build conversation history for the agent
+        var history = Conversation.Select(msg =>
+            new ConversationTurn(msg.IsUser ? "user" : "assistant", msg.Text)).ToList();
+
         Conversation.Add(new ChatMessage(userMessage, true));
 
-        var reply = await agentService.SendMessageAsync(userMessage);
+        var reply = await agentService.SendMessageAsync(userMessage, history);
 
         if (reply.StartsWith("Could not connect") || reply.StartsWith("The request timed out"))
         {

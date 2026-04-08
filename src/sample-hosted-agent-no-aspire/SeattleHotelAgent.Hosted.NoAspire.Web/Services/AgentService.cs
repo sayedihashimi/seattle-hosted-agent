@@ -1,19 +1,28 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace SeattleHotelAgent.Hosted.NoAspire.Web.Services;
 
 public class AgentService(HttpClient httpClient)
 {
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        PropertyNameCaseInsensitive = true
-    };
-
-    public async Task<string> SendMessageAsync(string input)
+    public async Task<string> SendMessageAsync(string input, List<ConversationTurn>? history = null)
     {
         try
         {
-            var payload = JsonSerializer.Serialize(new { input });
+            // Build the input as an array of messages for conversation context
+            var messages = new List<object>();
+
+            if (history != null)
+            {
+                foreach (var turn in history)
+                {
+                    messages.Add(new { role = turn.Role, content = turn.Content });
+                }
+            }
+
+            messages.Add(new { role = "user", content = input });
+
+            var payload = JsonSerializer.Serialize(new { input = messages });
             var content = new StringContent(payload, System.Text.Encoding.UTF8, "application/json");
 
             var response = await httpClient.PostAsync("/responses", content);
@@ -28,14 +37,12 @@ public class AgentService(HttpClient httpClient)
             using var doc = JsonDocument.Parse(json);
             var root = doc.RootElement;
 
-            // Check for error response
             if (root.TryGetProperty("code", out var code))
             {
                 var message = root.TryGetProperty("message", out var msg) ? msg.GetString() : "Unknown error";
                 return $"Agent error ({code.GetString()}): {message}";
             }
 
-            // Extract text from output[].content[].text
             if (root.TryGetProperty("output", out var output))
             {
                 var texts = new List<string>();
@@ -71,3 +78,5 @@ public class AgentService(HttpClient httpClient)
         }
     }
 }
+
+public record ConversationTurn(string Role, string Content);
