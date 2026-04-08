@@ -4,7 +4,8 @@ An AI-powered hotel booking agent built with C#, .NET Aspire, and Azure AI Found
 
 ## What's Inside
 
-- **`src/SeattleHotelAgent/`** — The .NET 10 Aspire solution with the hotel booking API
+- **`src/SeattleHotelAgent/`** — ACA version: .NET 10 Aspire app with custom REST API endpoints
+- **`src/SeattleHotelAgent.Hosted/`** — Hosted Agent version: Foundry Agent Service using the Responses protocol
 - **`tutorials/`** — Step-by-step Quick Start tutorials (ACA and Hosted Agent approaches)
 - **`learnings/`** — Technical learnings and gotchas from the development process
 

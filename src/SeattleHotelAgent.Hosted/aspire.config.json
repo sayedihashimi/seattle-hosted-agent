@@ -1,0 +1,5 @@
+{
+  "appHost": {
+    "path": "SeattleHotelAgent.Hosted.AppHost/SeattleHotelAgent.Hosted.AppHost.csproj"
+  }
+}

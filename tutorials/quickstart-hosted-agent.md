@@ -1,15 +1,15 @@
-# Build an AI Hotel Booking Agent with .NET Aspire and Azure AI Foundry
+# Build a Foundry Hosted Agent with .NET Aspire and the Responses Protocol
 
-In this tutorial we will build an AI-powered hotel booking agent using C#, .NET Aspire, and Azure AI Foundry. The agent can search for hotels, check availability, and book rooms in Seattle using natural language. To get started you will need the [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0), the [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli), and the [Azure Developer CLI (azd)](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd). The completed code for this tutorial can be found at [seattle-hosted-agent](https://github.com/sayedihashimi/seattle-hosted-agent).
+In this tutorial we will build a hotel booking agent that runs as a Foundry Hosted Agent using the OpenAI Responses protocol. This is a companion to the [ACA-based tutorial](quickstart-aca.md) — it uses the same hotel data and tools, but instead of custom REST endpoints, the agent implements the [Responses protocol](https://platform.openai.com/docs/api-reference/responses) via the Azure AI AgentServer framework. The completed code for this tutorial can be found at [seattle-hosted-agent](https://github.com/sayedihashimi/seattle-hosted-agent).
 
 In this tutorial we will cover the following.
 
-- Creating a .NET Aspire solution
+- Creating a .NET Aspire solution with a console-based agent
 - Provisioning Azure AI Foundry resources
-- Creating hotel data and AI tool functions
-- Wiring up the agent with Microsoft.Extensions.AI
-- Adding REST API endpoints
-- Testing the agent locally and in Azure
+- Reusing hotel data and AI tool functions
+- Wiring up the agent with the AgentServer framework and Responses protocol
+- Testing the agent locally
+- Key differences from the ACA-based approach
 
 ## Prerequisites
 
@@ -19,45 +19,60 @@ Before getting started, ensure you have the following installed.
 |---|---|
 | [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0) | .NET 10 or later |
 | [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli) | `az` command line tool |
-| [Azure Developer CLI](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd) | `azd` command line tool |
 | Azure subscription | An active Azure subscription |
 
-You will also need to be logged in to Azure. Run the following commands to sign in.
+You will also need an Azure AI Foundry resource with a GPT-4o-mini deployment. If you have already completed the [ACA-based tutorial](quickstart-aca.md), you can reuse the same Foundry resource. If not, follow the provisioning steps in that tutorial first.
+
+## How this differs from the ACA version
+
+Before we start building, it is helpful to understand the key differences between this approach and the ACA-based approach.
+
+| Aspect | ACA Version | Hosted Agent Version |
+|---|---|---|
+| **Project type** | ASP.NET Core Web API | Console app |
+| **HTTP server** | You build endpoints with minimal APIs | AgentServer framework handles it |
+| **Protocol** | Custom REST (`/api/chat`, `/api/hotels`) | OpenAI Responses protocol (`/responses`) |
+| **Port** | Dynamic (from launch settings) | 8088 (AgentServer default) |
+| **Additional APIs** | Hotel listing, hotel details, OpenAPI | Health check only (`/readiness`) |
+| **Key package** | `Microsoft.Extensions.AI` (10.4.x) | `Azure.AI.AgentServer.AgentFramework` (beta) |
+
+The Hosted Agent approach is simpler — you define your agent and call `RunAIAgentAsync()`, and the framework handles the HTTP server, the Responses protocol, and tool invocation. The tradeoff is that you are constrained to the Responses protocol and cannot add custom endpoints.
+
+## Getting started — creating the Aspire solution
+
+To get started we need to create a new .NET Aspire solution with a console app for the agent. Open a terminal and run the following commands.
 
 ```
-az login
-azd auth login
+mkdir SeattleHotelAgent.Hosted
+cd SeattleHotelAgent.Hosted
+dotnet new aspire -n SeattleHotelAgent.Hosted -o .
 ```
 
-## Getting started – creating the Aspire solution
-
-To get started we need to create a new .NET Aspire solution. In this tutorial we will use the Aspire Empty App template and then add an API project to it. Open a terminal and run the following commands.
+This creates the AppHost and ServiceDefaults projects. Now create the agent project as a console application.
 
 ```
-mkdir SeattleHotelAgent
-cd SeattleHotelAgent
-dotnet new aspire -n SeattleHotelAgent
+dotnet new console -n SeattleHotelAgent.Hosted.Agent -o SeattleHotelAgent.Hosted.Agent
+dotnet sln add SeattleHotelAgent.Hosted.Agent
+dotnet add SeattleHotelAgent.Hosted.Agent reference SeattleHotelAgent.Hosted.ServiceDefaults
+dotnet add SeattleHotelAgent.Hosted.AppHost reference SeattleHotelAgent.Hosted.Agent
 ```
 
-This creates a solution with two projects: **SeattleHotelAgent.AppHost** (the Aspire orchestrator) and **SeattleHotelAgent.ServiceDefaults** (shared configuration for OpenTelemetry, health checks, and service discovery). Now add the API project where the agent will live.
+> **Note:** We are using a console app instead of a web API because the AgentServer framework provides its own HTTP server. There is no need for ASP.NET Core middleware, controllers, or minimal APIs.
+
+Now add the NuGet packages. Package versions are important here — the AgentServer framework has strict compatibility requirements with Microsoft.Extensions.AI.
 
 ```
-dotnet new webapi -n SeattleHotelAgent.Api --use-minimal-apis
-dotnet sln add SeattleHotelAgent.Api/SeattleHotelAgent.Api.csproj
-dotnet add SeattleHotelAgent.Api/SeattleHotelAgent.Api.csproj reference SeattleHotelAgent.ServiceDefaults/SeattleHotelAgent.ServiceDefaults.csproj
-dotnet add SeattleHotelAgent.AppHost/SeattleHotelAgent.AppHost.csproj reference SeattleHotelAgent.Api/SeattleHotelAgent.Api.csproj
-```
-
-Now add the NuGet packages needed for the AI agent. We need packages for the Azure OpenAI SDK, keyless authentication, and the Microsoft.Extensions.AI abstractions.
-
-```
-cd SeattleHotelAgent.Api
-dotnet add package Azure.AI.OpenAI --prerelease
-dotnet add package Azure.Identity
-dotnet add package Microsoft.Extensions.AI --prerelease
-dotnet add package Microsoft.Extensions.AI.OpenAI --prerelease
+cd SeattleHotelAgent.Hosted.Agent
+dotnet add package Azure.AI.AgentServer.AgentFramework --version 1.0.0-beta.9
+dotnet add package Microsoft.Agents.AI.OpenAI --version 1.0.0-rc1
+dotnet add package Azure.AI.OpenAI --version 2.5.0-beta.1
+dotnet add package Azure.Identity --version 1.17.0
+dotnet add package Microsoft.Extensions.AI --version 10.3.0
+dotnet add package Microsoft.Extensions.AI.OpenAI --version 10.3.0
 cd ..
 ```
+
+> **Important:** Do not use `Microsoft.Extensions.AI` version 10.4.x with `Azure.AI.AgentServer.AgentFramework` 1.0.0-beta.9. The AgentFramework was compiled against MEAI 10.3 and will throw a `TypeLoadException` at runtime if you use a newer version. See the [learnings document](../learnings/foundry-hosted-agent-learnings.md) for details on this compatibility issue.
 
 Build the solution to ensure everything is configured correctly.
 
@@ -65,504 +80,209 @@ Build the solution to ensure everything is configured correctly.
 dotnet build
 ```
 
-## Provisioning Azure AI Foundry resources
+## Adding hotel data and tools
 
-Before we can use the AI agent, we need an Azure AI Foundry resource with a model deployment. We will provision this using the Azure CLI. Run the following commands to create a resource group, an AI Services account, and a GPT-4o-mini deployment.
-
-```
-az group create --name rg-hotel-agent --location eastus2
-
-az cognitiveservices account create \
-  --name my-hotel-foundry \
-  --resource-group rg-hotel-agent \
-  --location eastus2 \
-  --kind AIServices \
-  --sku S0 \
-  --custom-domain my-hotel-foundry
-
-az cognitiveservices account deployment create \
-  --name my-hotel-foundry \
-  --resource-group rg-hotel-agent \
-  --deployment-name chat \
-  --model-name gpt-4o-mini \
-  --model-version 2024-07-18 \
-  --model-format OpenAI \
-  --sku-capacity 1 \
-  --sku-name GlobalStandard
-```
-
-After provisioning, get the endpoint URL. We will need this later.
+The hotel data and tool functions are identical to the ACA version. Create the **Models** and **Tools** folders in the agent project.
 
 ```
-az cognitiveservices account show \
-  --name my-hotel-foundry \
-  --resource-group rg-hotel-agent \
-  --query properties.endpoint -o tsv
+mkdir SeattleHotelAgent.Hosted.Agent/Models
+mkdir SeattleHotelAgent.Hosted.Agent/Tools
 ```
 
-You will also need to grant yourself the **Cognitive Services User** role so that `DefaultAzureCredential` can authenticate without API keys. First get your user object ID, then create the role assignment.
+Copy the following files from the ACA tutorial (or from the [source repository](https://github.com/sayedihashimi/seattle-hosted-agent)):
 
-```
-az ad signed-in-user show --query id -o tsv
-```
+- **Models/HotelModels.cs** — Hotel, Room, and other record types
+- **Models/HotelData.cs** — 8 fake Seattle hotels with rooms, amenities, and pricing
+- **Tools/HotelTools.cs** — SearchHotels, GetHotelDetails, CheckAvailability, BookRoom
 
-Use the object ID from the output in the following command.
+After copying, update the namespace in each file from `SeattleHotelAgent.Api` to `SeattleHotelAgent.Hosted.Agent`.
 
-```
-az role assignment create \
-  --role "Cognitive Services User" \
-  --assignee-object-id YOUR_OBJECT_ID \
-  --assignee-principal-type User \
-  --scope $(az cognitiveservices account show --name my-hotel-foundry --resource-group rg-hotel-agent --query id -o tsv)
-```
-
-> **Note:** If your Azure subscription is in a different tenant than your default login (common with MSDN subscriptions), you will need to set the `AzureAI:TenantId` configuration value. You can find your tenant ID by running `az account show --query tenantId -o tsv`.
-
-## Adding hotel data
-
-Now we will add the data that the agent will use. Create a **Models** folder and a **Tools** folder in the API project.
-
-```
-mkdir SeattleHotelAgent.Api/Models
-mkdir SeattleHotelAgent.Api/Tools
-```
-
-First, add the model classes. Create a file named **HotelModels.cs** in the Models folder with the following content.
-
-**Models/HotelModels.cs**
+For example, the top of each file should read:
 
 ```csharp
-namespace SeattleHotelAgent.Api.Models;
-
-public record Hotel
-{
-    public required string Id { get; init; }
-    public required string Name { get; init; }
-    public required string Description { get; init; }
-    public required string Address { get; init; }
-    public required string Neighborhood { get; init; }
-    public required double Rating { get; init; }
-    public required int StarRating { get; init; }
-    public required List<Room> Rooms { get; init; }
-    public required List<string> Amenities { get; init; }
-}
-
-public record Room
-{
-    public required string Type { get; init; }
-    public required string Description { get; init; }
-    public required decimal PricePerNight { get; init; }
-    public required int MaxGuests { get; init; }
-    public required int AvailableCount { get; init; }
-}
-
-public record ChatRequest
-{
-    public required string Message { get; init; }
-    public string? SessionId { get; init; }
-}
-
-public record AgentResponse
-{
-    public required string Reply { get; init; }
-    public required string SessionId { get; init; }
-}
+namespace SeattleHotelAgent.Hosted.Agent.Models;
+// or
+namespace SeattleHotelAgent.Hosted.Agent.Tools;
 ```
 
-Next, create **HotelData.cs** in the Models folder with fake Seattle hotel data. For this tutorial the data is stored in-memory. Below is a shortened version showing two of the eight hotels. The full file with all eight hotels is available in the [source repository](https://github.com/sayedihashimi/seattle-hosted-agent/blob/main/src/SeattleHotelAgent/SeattleHotelAgent.Api/Models/HotelData.cs).
-
-**Models/HotelData.cs**
-
-```csharp
-namespace SeattleHotelAgent.Api.Models;
-
-public static class HotelData
-{
-    public static readonly List<Hotel> Hotels =
-    [
-        new()
-        {
-            Id = "emerald-inn",
-            Name = "The Emerald Inn",
-            Description = "A cozy boutique hotel in Capitol Hill with locally sourced breakfast and city views.",
-            Address = "1425 Broadway E, Seattle, WA 98102",
-            Neighborhood = "Capitol Hill",
-            Rating = 4.6,
-            StarRating = 4,
-            Rooms =
-            [
-                new() { Type = "Standard Queen", Description = "Queen bed with city view", PricePerNight = 159m, MaxGuests = 2, AvailableCount = 8 },
-                new() { Type = "Deluxe King", Description = "King bed with panoramic views", PricePerNight = 229m, MaxGuests = 2, AvailableCount = 4 },
-                new() { Type = "Suite", Description = "One-bedroom suite with kitchenette", PricePerNight = 349m, MaxGuests = 4, AvailableCount = 2 }
-            ],
-            Amenities = ["Free WiFi", "Complimentary Breakfast", "Rooftop Terrace", "Bike Rentals", "EV Charging"]
-        },
-        new()
-        {
-            Id = "ballard-lodge",
-            Name = "Ballard Nordic Lodge",
-            Description = "Scandinavian-inspired lodge near Ballard's breweries with a sauna and hygge-inspired rooms.",
-            Address = "5300 Ballard Ave NW, Seattle, WA 98107",
-            Neighborhood = "Ballard",
-            Rating = 4.5,
-            StarRating = 3,
-            Rooms =
-            [
-                new() { Type = "Standard Double", Description = "Two double beds, Nordic theme", PricePerNight = 129m, MaxGuests = 4, AvailableCount = 10 },
-                new() { Type = "Deluxe King", Description = "King bed with fireplace", PricePerNight = 189m, MaxGuests = 2, AvailableCount = 5 },
-                new() { Type = "Family Suite", Description = "Two-room suite with bunk beds", PricePerNight = 269m, MaxGuests = 6, AvailableCount = 3 }
-            ],
-            Amenities = ["Free WiFi", "Sauna", "Free Parking", "Pet Friendly", "Brewery Tours"]
-        },
-        // ... 6 more hotels — see the full source file for all entries
-    ];
-}
-```
-
-## Creating AI tool functions
-
-The agent uses C# functions as tools that the AI model can call. These tools allow the model to search hotels, check availability, and book rooms. Create a file named **HotelTools.cs** in the Tools folder with the following content.
-
-**Tools/HotelTools.cs**
-
-```csharp
-using System.ComponentModel;
-using SeattleHotelAgent.Api.Models;
-
-namespace SeattleHotelAgent.Api.Tools;
-
-public static class HotelTools
-{
-    [Description("Search for hotels in Seattle by neighborhood, star rating, price, and guest count.")]
-    public static string SearchHotels(
-        [Description("Optional neighborhood to filter by")] string? neighborhood = null,
-        [Description("Minimum star rating (1-5)")] int? minStarRating = null,
-        [Description("Maximum price per night in USD")] decimal? maxPricePerNight = null,
-        [Description("Number of guests to accommodate")] int? guests = null)
-    {
-        var results = HotelData.Hotels.AsEnumerable();
-
-        if (!string.IsNullOrWhiteSpace(neighborhood))
-            results = results.Where(h => h.Neighborhood.Contains(neighborhood, StringComparison.OrdinalIgnoreCase));
-        if (minStarRating.HasValue)
-            results = results.Where(h => h.StarRating >= minStarRating.Value);
-        if (maxPricePerNight.HasValue)
-            results = results.Where(h => h.Rooms.Any(r => r.PricePerNight <= maxPricePerNight.Value));
-        if (guests.HasValue)
-            results = results.Where(h => h.Rooms.Any(r => r.MaxGuests >= guests.Value && r.AvailableCount > 0));
-
-        var hotels = results.ToList();
-        if (hotels.Count == 0) return "No hotels found matching your criteria.";
-
-        var lines = hotels.Select(h =>
-        {
-            var cheapest = h.Rooms.Min(r => r.PricePerNight);
-            return $"- [ID: {h.Id}] {h.Name} ({h.StarRating}★, {h.Rating}/5.0) in {h.Neighborhood} — from ${cheapest}/night";
-        });
-        return $"Found {hotels.Count} hotel(s):\n{string.Join("\n", lines)}";
-    }
-
-    [Description("Get detailed information about a specific hotel including room types and amenities.")]
-    public static string GetHotelDetails(
-        [Description("The hotel ID (e.g., 'emerald-inn', 'ballard-lodge')")] string hotelId)
-    {
-        var hotel = HotelData.Hotels.FirstOrDefault(h => h.Id.Equals(hotelId, StringComparison.OrdinalIgnoreCase));
-        if (hotel is null) return $"Hotel '{hotelId}' not found. Use SearchHotels to find available hotels.";
-
-        var rooms = string.Join("\n", hotel.Rooms.Select(r =>
-            $"  - {r.Type}: ${r.PricePerNight}/night (up to {r.MaxGuests} guests, {r.AvailableCount} available)"));
-        return $"Hotel: {hotel.Name} ({hotel.StarRating}★)\nLocation: {hotel.Address}\n\nRooms:\n{rooms}\n\nAmenities: {string.Join(", ", hotel.Amenities)}";
-    }
-
-    [Description("Check room availability at a hotel for specific dates and guest count.")]
-    public static string CheckAvailability(
-        [Description("The hotel ID")] string hotelId,
-        [Description("Check-in date (YYYY-MM-DD)")] string checkInDate,
-        [Description("Check-out date (YYYY-MM-DD)")] string checkOutDate,
-        [Description("Number of guests")] int guests = 1)
-    {
-        var hotel = HotelData.Hotels.FirstOrDefault(h => h.Id.Equals(hotelId, StringComparison.OrdinalIgnoreCase));
-        if (hotel is null) return $"Hotel '{hotelId}' not found.";
-        if (!DateOnly.TryParse(checkInDate, out var checkIn) || !DateOnly.TryParse(checkOutDate, out var checkOut))
-            return "Invalid date format. Please use YYYY-MM-DD.";
-        if (checkOut <= checkIn) return "Check-out date must be after check-in date.";
-
-        var nights = checkOut.DayNumber - checkIn.DayNumber;
-        var available = hotel.Rooms.Where(r => r.MaxGuests >= guests && r.AvailableCount > 0).ToList();
-        if (available.Count == 0) return $"No rooms at {hotel.Name} for {guests} guest(s) on those dates.";
-
-        var lines = available.Select(r => $"  - {r.Type}: ${r.PricePerNight}/night × {nights} nights = ${r.PricePerNight * nights} total");
-        return $"Availability at {hotel.Name} ({checkIn:MMM d} → {checkOut:MMM d}, {nights} night(s)):\n{string.Join("\n", lines)}";
-    }
-
-    [Description("Book a hotel room and receive a confirmation number.")]
-    public static string BookRoom(
-        [Description("The hotel ID")] string hotelId,
-        [Description("Room type (e.g., 'Standard Queen', 'Deluxe King')")] string roomType,
-        [Description("Guest full name")] string guestName,
-        [Description("Check-in date (YYYY-MM-DD)")] string checkInDate,
-        [Description("Check-out date (YYYY-MM-DD)")] string checkOutDate)
-    {
-        var hotel = HotelData.Hotels.FirstOrDefault(h => h.Id.Equals(hotelId, StringComparison.OrdinalIgnoreCase));
-        if (hotel is null) return $"Hotel '{hotelId}' not found.";
-        var room = hotel.Rooms.FirstOrDefault(r => r.Type.Equals(roomType, StringComparison.OrdinalIgnoreCase));
-        if (room is null) return $"Room type '{roomType}' not found at {hotel.Name}.";
-        if (!DateOnly.TryParse(checkInDate, out var checkIn) || !DateOnly.TryParse(checkOutDate, out var checkOut))
-            return "Invalid date format.";
-
-        var nights = checkOut.DayNumber - checkIn.DayNumber;
-        var total = room.PricePerNight * nights;
-        var confirmation = $"SEA-{Guid.NewGuid().ToString()[..8].ToUpperInvariant()}";
-
-        return $"✅ Booking Confirmed!\nConfirmation #: {confirmation}\nHotel: {hotel.Name}\nRoom: {room.Type}\nGuest: {guestName}\nCheck-in: {checkIn:ddd, MMM d, yyyy}\nCheck-out: {checkOut:ddd, MMM d, yyyy}\nTotal: ${total}";
-    }
-}
-```
-
-There are a few things to note in the code above. Each tool function is a `static` method decorated with a `[Description]` attribute. This attribute is what the AI model uses to understand when and how to call each function. The parameters also have descriptions so that the model knows what values to pass. All four functions return a string, which the model uses to formulate its response to the user.
-
-It is important to include the hotel ID in the search results (e.g., `[ID: ballard-lodge]`). Without the ID, the model cannot chain calls to `GetHotelDetails`, `CheckAvailability`, or `BookRoom` because those functions require the hotel ID as a parameter.
+The tool functions are the same static methods decorated with `[Description]` attributes. See the [ACA tutorial](quickstart-aca.md#creating-ai-tool-functions) for the full source code.
 
 ## Wiring up the agent in Program.cs
 
-Now let's wire everything together. Open **Program.cs** in the API project and replace the contents with the following code.
+This is where the Hosted Agent approach differs significantly from the ACA version. Instead of building an ASP.NET Core app with endpoints, we create a `ChatClientAgent` and call `RunAIAgentAsync()`. Open **Program.cs** in the agent project and replace the contents with the following code.
 
 **Program.cs**
 
 ```csharp
+using Azure.AI.AgentServer.AgentFramework.Extensions;
+using Microsoft.Agents.AI;
+using Microsoft.Extensions.AI;
 using Azure.AI.OpenAI;
 using Azure.Identity;
-using Microsoft.Extensions.AI;
-using SeattleHotelAgent.Api.Models;
-using SeattleHotelAgent.Api.Tools;
+using SeattleHotelAgent.Hosted.Agent.Tools;
 
-var builder = WebApplication.CreateBuilder(args);
-builder.AddServiceDefaults();
-builder.Services.AddOpenApi();
-
-// Get Foundry endpoint from connection string or configuration
-var connectionString = builder.Configuration.GetConnectionString("chat");
-string endpoint;
-string deploymentName;
-
-if (!string.IsNullOrEmpty(connectionString))
-{
-    var parts = connectionString.Split(';')
-        .Select(p => p.Split('=', 2))
-        .ToDictionary(p => p[0].Trim(), p => p[1].Trim());
-    endpoint = parts["Endpoint"].TrimEnd('/');
-    deploymentName = parts.GetValueOrDefault("DeploymentId", "chat");
-}
-else
-{
-    endpoint = builder.Configuration["AzureAI:Endpoint"]
-        ?? throw new InvalidOperationException("Set ConnectionStrings:chat or AzureAI:Endpoint");
-    deploymentName = builder.Configuration["AzureAI:DeploymentName"] ?? "chat";
-}
+var openAiEndpoint = Environment.GetEnvironmentVariable("AZURE_OPENAI_ENDPOINT")
+    ?? throw new InvalidOperationException("AZURE_OPENAI_ENDPOINT is not set.");
+var deploymentName = Environment.GetEnvironmentVariable("AZURE_OPENAI_DEPLOYMENT_NAME") ?? "chat";
+var tenantId = Environment.GetEnvironmentVariable("AZURE_AI_TENANT_ID");
 
 var credential = new DefaultAzureCredential(new DefaultAzureCredentialOptions
 {
-    TenantId = builder.Configuration["AzureAI:TenantId"]
+    TenantId = tenantId
 });
 
-var chatClient = new AzureOpenAIClient(new Uri(endpoint), credential)
-    .GetChatClient(deploymentName)
-    .AsIChatClient();
-
-builder.Services.AddChatClient(chatClient)
-    .UseFunctionInvocation()
-    .UseOpenTelemetry(sourceName: "SeattleHotelAgent");
-
-builder.Services.AddSingleton<IList<AITool>>(
-[
+// Register hotel tools for function calling
+var tools = new AIFunction[]
+{
     AIFunctionFactory.Create(HotelTools.SearchHotels),
     AIFunctionFactory.Create(HotelTools.GetHotelDetails),
     AIFunctionFactory.Create(HotelTools.CheckAvailability),
     AIFunctionFactory.Create(HotelTools.BookRoom)
-]);
+};
 
-var app = builder.Build();
-app.MapDefaultEndpoints();
-app.MapOpenApi();
+var chatClient = new AzureOpenAIClient(new Uri(openAiEndpoint), credential)
+    .GetChatClient(deploymentName)
+    .AsIChatClient()
+    .AsBuilder()
+    .UseFunctionInvocation()
+    .UseOpenTelemetry(sourceName: "SeattleHotelAgent", configure: cfg => cfg.EnableSensitiveData = true)
+    .Build();
 
-var agentInstructions = """
-    You are the Seattle Hotel Concierge, a friendly and knowledgeable AI assistant that helps 
-    travelers find and book hotels in Seattle, Washington.
+var agent = new ChatClientAgent(chatClient,
+    name: "SeattleHotelConcierge",
+    instructions: """
+        You are the Seattle Hotel Concierge, a friendly and knowledgeable AI assistant that helps
+        travelers find and book hotels in Seattle, Washington.
 
-    Your capabilities:
-    - Search for hotels by neighborhood, star rating, price, and guest count
-    - Provide detailed information about specific hotels
-    - Check room availability for specific dates
-    - Book hotel rooms
+        Your capabilities:
+        - Search for hotels by neighborhood, star rating, price, and guest count
+        - Provide detailed information about specific hotels
+        - Check room availability for specific dates
+        - Book hotel rooms
 
-    Guidelines:
-    - Always be warm and welcoming
-    - When users ask vague questions, help narrow down their preferences
-    - Suggest neighborhoods based on what they want to do
-    - Always confirm booking details before finalizing
-    - If dates aren't provided, ask for them before checking availability
-    """;
+        Guidelines:
+        - Always be warm and welcoming — Seattle is a great city to visit!
+        - When users ask vague questions, help narrow down their preferences
+        - Suggest neighborhoods based on what they want to do
+        - Always confirm booking details before finalizing
+        - If dates aren't provided, ask for them before checking availability
+        """,
+    tools: tools)
+    .AsBuilder()
+    .UseOpenTelemetry(sourceName: "SeattleHotelAgent", configure: cfg => cfg.EnableSensitiveData = true)
+    .Build();
 
-app.MapPost("/api/chat", async (ChatRequest request, IChatClient chatClient, IList<AITool> tools) =>
-{
-    var messages = new List<ChatMessage>
-    {
-        new(ChatRole.System, agentInstructions),
-        new(ChatRole.User, request.Message)
-    };
-
-    var response = await chatClient.GetResponseAsync(
-        messages,
-        new() { Tools = [.. tools] });
-
-    return Results.Ok(new AgentResponse
-    {
-        Reply = response.Text ?? "I'm sorry, I couldn't process that request.",
-        SessionId = request.SessionId ?? Guid.NewGuid().ToString()[..8]
-    });
-});
-
-app.MapGet("/api/hotels", () => Results.Ok(HotelData.Hotels));
-
-app.MapGet("/api/hotels/{id}", (string id) =>
-{
-    var hotel = HotelData.Hotels.FirstOrDefault(h =>
-        h.Id.Equals(id, StringComparison.OrdinalIgnoreCase));
-    return hotel is not null ? Results.Ok(hotel) : Results.NotFound();
-});
-
-app.Run();
+await agent.RunAIAgentAsync(telemetrySourceName: "SeattleHotelAgent");
 ```
 
-Let's walk through the key parts of this file.
+Let's walk through the key differences from the ACA version.
 
-**Configuration.** The endpoint and deployment name are read from a connection string (`ConnectionStrings:chat`) in the format `Endpoint=https://...;DeploymentId=chat`. If no connection string is set, it falls back to `AzureAI:Endpoint` configuration.
+**No WebApplication.** There is no `WebApplication.CreateBuilder()`, no `MapGet()`, no `MapPost()`. The `RunAIAgentAsync()` method starts a Kestrel HTTP server on port 8088 and exposes the Responses protocol endpoints automatically.
 
-**Authentication.** We use [DefaultAzureCredential](https://learn.microsoft.com/dotnet/azure/sdk/authentication/credential-chains#defaultazurecredential-overview) for keyless authentication. This works with `az login` during local development and with managed identities when deployed.
+**Tools on the agent.** Instead of registering tools in DI and passing them in `ChatOptions`, tools are passed directly to the `ChatClientAgent` constructor. The agent handles tool invocation as part of the Responses protocol flow.
 
-**Chat client.** The `AzureOpenAIClient` is wrapped as an `IChatClient` using the `.AsIChatClient()` extension from [Microsoft.Extensions.AI](https://learn.microsoft.com/dotnet/ai/ai-extensions). The `.UseFunctionInvocation()` call enables the client to automatically invoke our tool functions when the model requests them.
+**Configuration via environment variables.** The AgentServer pattern uses environment variables (`AZURE_OPENAI_ENDPOINT`, `AZURE_OPENAI_DEPLOYMENT_NAME`) rather than ASP.NET Core configuration (`appsettings.json`, connection strings).
 
-**Tools.** The four hotel tool functions are registered using `AIFunctionFactory.Create()`, which converts them into `AITool` instances that the model can call. These are passed to `GetResponseAsync` via the `ChatOptions.Tools` property.
-
-**Endpoints.** We have three API endpoints: `POST /api/chat` for interacting with the agent, `GET /api/hotels` for listing all hotels, and `GET /api/hotels/{id}` for getting details on a specific hotel. The `MapOpenApi()` call exposes the OpenAPI document at `/openapi/v1.json`, which you can use to explore the API schema in any OpenAPI-compatible tool.
+**ChatClientAgent from MAF.** We use `ChatClientAgent` from `Microsoft.Agents.AI` which wraps the `IChatClient` and provides the agent abstraction that the AgentServer framework expects.
 
 ## Configuring the AppHost
 
-Open the **AppHost.cs** file in the AppHost project and update it to register the API project.
+Open the **AppHost.cs** file in the AppHost project and update it to register the agent project.
 
 **AppHost.cs**
 
 ```csharp
 var builder = DistributedApplication.CreateBuilder(args);
 
-builder.AddProject<Projects.SeattleHotelAgent_Api>("hotel-api")
+builder.AddProject<Projects.SeattleHotelAgent_Hosted_Agent>("hotel-agent")
     .WithExternalHttpEndpoints();
 
 builder.Build().Run();
 ```
 
-## Running the app locally
+## Running the agent locally
 
-Now we are ready to test. First, set the connection string so that the API knows where the Foundry resource is. Replace the endpoint below with the value you got from the provisioning step earlier.
+Set the environment variables for your Foundry resource. Replace the endpoint below with the value from your Azure AI Services resource.
 
-```
-$env:ConnectionStrings__chat = "Endpoint=https://YOUR-RESOURCE.cognitiveservices.azure.com;DeploymentId=chat"
+```powershell
+$env:AZURE_OPENAI_ENDPOINT = "https://YOUR-RESOURCE.cognitiveservices.azure.com"
+$env:AZURE_OPENAI_DEPLOYMENT_NAME = "chat"
 ```
 
 If your subscription tenant differs from your default login tenant, also set the tenant ID.
 
-```
+```powershell
 # Get your tenant ID
 az account show --query tenantId -o tsv
 
 # Set it
-$env:AzureAI__TenantId = "YOUR-TENANT-ID"
+$env:AZURE_AI_TENANT_ID = "YOUR-TENANT-ID"
 ```
 
-Run the API project directly to test it.
+Run the agent directly.
 
 ```
-dotnet run --project SeattleHotelAgent.Api
+dotnet run --project SeattleHotelAgent.Hosted.Agent
 ```
 
-The API will start and the URL will be displayed in the terminal output (e.g., `Now listening on: http://localhost:5031`). Note the port number and use it in the following test commands. Open a new terminal window and replace `PORT` with the port from the output.
+The agent will start on `http://[::]:8088`. You can verify it is running by checking the readiness endpoint.
 
 ```powershell
-# List all hotels
-Invoke-RestMethod -Uri "http://localhost:PORT/api/hotels" | ConvertTo-Json -Depth 2
-
-# Chat with the agent
-Invoke-RestMethod -Uri "http://localhost:PORT/api/chat" -Method Post `
-  -Body '{"message":"Find me a budget hotel in Ballard for 2 guests for next Monday, under $300/night"}' `
-  -ContentType "application/json" | Select-Object -ExpandProperty reply
+Invoke-RestMethod -Uri "http://localhost:8088/readiness"
 ```
 
-You should see the agent respond with hotel recommendations from the Ballard neighborhood. You can also try more complex requests like booking a room.
+This should return `Healthy`.
+
+## Testing with the Responses protocol
+
+The Responses protocol uses a single `POST /responses` endpoint. The request body contains an `input` field with the user's message. Test with the following command.
 
 ```powershell
-Invoke-RestMethod -Uri "http://localhost:PORT/api/chat" -Method Post `
-  -Body '{"message":"Book a Standard Double at ballard-lodge for Jane Doe from 2026-06-01 to 2026-06-03"}' `
-  -ContentType "application/json" | Select-Object -ExpandProperty reply
+$body = @{ input = "Find me a budget hotel in Ballard for 2 guests, under 200 dollars per night" } | ConvertTo-Json
+$resp = Invoke-WebRequest -Uri "http://localhost:8088/responses" -Method Post -Body $body -ContentType "application/json" -TimeoutSec 120
+($resp.Content | ConvertFrom-Json).output | ForEach-Object {
+    if ($_.type -eq "message" -and $_.content) {
+        $_.content | ForEach-Object { if ($_.text) { Write-Host $_.text } }
+    }
+}
 ```
 
-The agent will call the `BookRoom` tool and return a confirmation number.
+You should see the agent respond with the Ballard Nordic Lodge recommendation.
 
-## Deploying to Azure
-
-To deploy the app to Azure Container Apps, we will use the Azure Developer CLI. Navigate to the folder that contains the solution file and run the following commands.
-
-```
-cd SeattleHotelAgent
-azd init --from-code
-```
-
-When prompted, select **Confirm and continue initializing my app**. You will also be asked to enter a unique environment name — this can be any value you choose (e.g., `hotel-agent-dev`). It is used to name the Azure resource group as `rg-<environment-name>`. This will generate the `azure.yaml` file needed for deployment. Next, set the Azure region and run the deployment.
-
-```
-azd env set AZURE_LOCATION eastus2
-azd up
-```
-
-The `azd up` command will provision the infrastructure (Container Registry, Container Apps Environment, Log Analytics) and deploy the API as a container app.
-
-After deployment, you will need to configure the container app with the Foundry connection string and a managed identity so it can authenticate with the AI Services resource. Run the following commands, replacing the resource names with yours.
-
-```bash
-# Assign a managed identity to the container app
-az containerapp identity assign \
-  --name hotel-api \
-  --resource-group rg-hotel-agent \
-  --user-assigned $(az identity show --name YOUR-MI-NAME --resource-group rg-hotel-agent --query id -o tsv)
-
-# Set the connection string and managed identity client ID
-az containerapp update \
-  --name hotel-api \
-  --resource-group rg-hotel-agent \
-  --set-env-vars \
-    "ConnectionStrings__chat=Endpoint=https://YOUR-RESOURCE.cognitiveservices.azure.com;DeploymentId=chat" \
-    "AZURE_CLIENT_ID=YOUR-MI-CLIENT-ID"
-```
-
-Once the container app restarts, test the deployed endpoint.
+You can also test booking directly. Note that each request is independent — the agent does not remember previous messages.
 
 ```powershell
-Invoke-RestMethod -Uri "https://YOUR-APP.azurecontainerapps.io/api/chat" -Method Post `
-  -Body '{"message":"What hotels do you have near Pike Place Market?"}' `
-  -ContentType "application/json" | Select-Object -ExpandProperty reply
+$body = @{ input = "Book a Standard Double at ballard-lodge for Jane Doe from 2026-06-01 to 2026-06-03" } | ConvertTo-Json
+$resp = Invoke-WebRequest -Uri "http://localhost:8088/responses" -Method Post -Body $body -ContentType "application/json" -TimeoutSec 120
+($resp.Content | ConvertFrom-Json).output | ForEach-Object {
+    if ($_.type -eq "message" -and $_.content) {
+        $_.content | ForEach-Object { if ($_.text) { Write-Host $_.text } }
+    }
+}
 ```
+
+## Important considerations
+
+### Stateless requests
+Each POST to `/responses` is independent. The agent has no memory of previous requests. If you need multi-turn conversations, the client must maintain conversation history and re-send it with each request.
+
+### Package version compatibility
+The `Azure.AI.AgentServer.AgentFramework` package is in beta and has strict version requirements. Using `Microsoft.Extensions.AI` 10.4.x with AgentFramework beta.9 will cause a `TypeLoadException` at runtime. Stick to the versions specified in this tutorial.
+
+### No custom endpoints
+Unlike the ACA version, you cannot add custom REST endpoints like `/api/hotels`. The agent only exposes the Responses protocol (`/responses`) and a health check (`/readiness`). If you need additional APIs, consider the [ACA-based approach](quickstart-aca.md).
 
 ## Summary
 
-In this tutorial we created an AI-powered hotel booking agent using .NET Aspire and Azure AI Foundry. We covered how to provision Azure AI resources, create tool functions that the model can call, wire up the agent using Microsoft.Extensions.AI, and deploy the app to Azure Container Apps.
-
-The key technologies we used are summarized below.
+In this tutorial we created a Foundry Hosted Agent using the AgentServer framework and the Responses protocol. We reused the same hotel data and tools from the ACA tutorial but used a fundamentally different hosting model.
 
 | Technology | Purpose |
 |---|---|
-| [.NET Aspire](https://learn.microsoft.com/dotnet/aspire) | Service orchestration, OpenTelemetry, health checks |
-| [Azure AI Foundry](https://learn.microsoft.com/azure/ai-foundry) | GPT-4o-mini model inference |
-| [Microsoft.Extensions.AI](https://learn.microsoft.com/dotnet/ai/ai-extensions) | `IChatClient` abstraction, tool/function calling |
+| [Azure.AI.AgentServer.AgentFramework](https://www.nuget.org/packages/Azure.AI.AgentServer.AgentFramework) | Responses protocol server and agent hosting |
+| [Microsoft.Agents.AI](https://www.nuget.org/packages/Microsoft.Agents.AI) | `ChatClientAgent` abstraction |
+| [Microsoft.Extensions.AI](https://learn.microsoft.com/dotnet/ai/ai-extensions) | `IChatClient`, tool/function calling |
 | [Azure.AI.OpenAI](https://www.nuget.org/packages/Azure.AI.OpenAI) | Azure OpenAI SDK |
 | [DefaultAzureCredential](https://learn.microsoft.com/dotnet/azure/sdk/authentication) | Keyless authentication |
 
-We encourage you to extend the agent with additional features, such as conversation history, persistent storage, or additional tools. We would love to hear your feedback. If you have any questions or suggestions, please leave a comment below.
+For a comparison of the two approaches (ACA vs Hosted Agent), see the [learnings document](../learnings/foundry-hosted-agent-learnings.md).
+
