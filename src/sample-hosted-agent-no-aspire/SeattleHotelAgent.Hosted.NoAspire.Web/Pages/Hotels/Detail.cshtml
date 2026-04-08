@@ -1,0 +1,103 @@
+@page
+@model SeattleHotelAgent.Hosted.NoAspire.Web.Pages.Hotels.DetailModel
+@{
+    ViewData["Title"] = Model.Hotel?.Name ?? "Hotel Not Found";
+}
+
+@if (Model.Hotel is null)
+{
+    <div class="text-center py-16">
+        <p class="text-6xl mb-4">🏨</p>
+        <h1 class="text-2xl font-bold text-gray-800 mb-2">Hotel Not Found</h1>
+        <p class="text-gray-500 mb-6">We couldn't find a hotel with that ID.</p>
+        <a href="/Hotels" class="text-emerald-600 hover:text-emerald-700 font-medium">← Back to Hotels</a>
+    </div>
+}
+else
+{
+    <div class="mb-4">
+        <a href="/Hotels" class="text-sm text-emerald-600 hover:text-emerald-700 font-medium">← Back to Hotels</a>
+    </div>
+
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+        <div class="h-2 bg-emerald-600"></div>
+        <div class="p-6 sm:p-8">
+            <!-- Header -->
+            <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
+                <div>
+                    <h1 class="text-2xl font-bold text-gray-800">@Model.Hotel.Name</h1>
+                    <p class="text-emerald-600 font-medium mt-1">📍 @Model.Hotel.Neighborhood</p>
+                    <p class="text-sm text-gray-500 mt-1">@Model.Hotel.Address</p>
+                </div>
+                <div class="flex items-center gap-3">
+                    <span class="text-sm font-medium bg-emerald-100 text-emerald-800 px-3 py-1 rounded-full">
+                        @Model.Hotel.StarRating★
+                    </span>
+                    <span class="text-sm text-gray-500">
+                        ⭐ @Model.Hotel.Rating / 5.0
+                    </span>
+                </div>
+            </div>
+
+            <p class="text-gray-600 mb-8">@Model.Hotel.Description</p>
+
+            <!-- Rooms -->
+            <h2 class="text-lg font-semibold text-gray-800 mb-4">Rooms</h2>
+            <div class="overflow-x-auto mb-8">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="bg-gray-50 text-left">
+                            <th class="px-4 py-3 font-medium text-gray-600">Room Type</th>
+                            <th class="px-4 py-3 font-medium text-gray-600">Description</th>
+                            <th class="px-4 py-3 font-medium text-gray-600 text-right">Price/Night</th>
+                            <th class="px-4 py-3 font-medium text-gray-600 text-center">Max Guests</th>
+                            <th class="px-4 py-3 font-medium text-gray-600 text-center">Available</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100">
+                        @foreach (var room in Model.Hotel.Rooms)
+                        {
+                            <tr class="hover:bg-gray-50">
+                                <td class="px-4 py-3 font-medium text-gray-800">@room.Type</td>
+                                <td class="px-4 py-3 text-gray-500">@room.Description</td>
+                                <td class="px-4 py-3 text-right font-semibold text-emerald-700">$@room.PricePerNight</td>
+                                <td class="px-4 py-3 text-center text-gray-600">@room.MaxGuests</td>
+                                <td class="px-4 py-3 text-center">
+                                    @if (room.AvailableCount > 0)
+                                    {
+                                        <span class="text-green-600 font-medium">@room.AvailableCount</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-red-500 font-medium">Sold out</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Amenities -->
+            <h2 class="text-lg font-semibold text-gray-800 mb-4">Amenities</h2>
+            <div class="flex flex-wrap gap-2 mb-8">
+                @foreach (var amenity in Model.Hotel.Amenities)
+                {
+                    <span class="bg-gray-100 text-gray-700 text-sm px-3 py-1 rounded-full">@amenity</span>
+                }
+            </div>
+
+            <!-- Ask about this hotel -->
+            <div class="bg-emerald-50 rounded-lg p-5 flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                <div class="flex-1">
+                    <p class="font-medium text-emerald-800">Interested in this hotel?</p>
+                    <p class="text-sm text-emerald-600">Ask the concierge about availability, pricing, or book a room.</p>
+                </div>
+                <a href="/?ask=@System.Net.WebUtility.UrlEncode($"Tell me more about {Model.Hotel.Name}")"
+                   class="bg-emerald-600 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-emerald-700 transition-colors whitespace-nowrap">
+                    Ask the Concierge
+                </a>
+            </div>
+        </div>
+    </div>
+}

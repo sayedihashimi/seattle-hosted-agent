@@ -1,0 +1,41 @@
+@page
+@model SeattleHotelAgent.Hosted.NoAspire.Web.Pages.Hotels.IndexModel
+@{
+    ViewData["Title"] = "Hotels";
+}
+
+<h1 class="text-2xl font-bold text-gray-800 mb-2">Seattle Hotels</h1>
+<p class="text-gray-500 mb-8">Browse our collection of 8 hand-picked hotels across Seattle's best neighborhoods.</p>
+
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    @foreach (var hotel in Model.Hotels)
+    {
+        var cheapest = hotel.Rooms.Min(r => r.PricePerNight);
+        <a href="/Hotels/Detail?id=@hotel.Id" class="block group">
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow h-full flex flex-col">
+                <!-- Color bar -->
+                <div class="h-2 bg-emerald-600"></div>
+                <div class="p-5 flex flex-col flex-1">
+                    <div class="flex items-start justify-between mb-2">
+                        <h2 class="text-lg font-semibold text-gray-800 group-hover:text-emerald-700 transition-colors">
+                            @hotel.Name
+                        </h2>
+                        <span class="text-xs font-medium bg-emerald-100 text-emerald-800 px-2 py-1 rounded-full whitespace-nowrap ml-2">
+                            @hotel.StarRating★
+                        </span>
+                    </div>
+                    <p class="text-sm text-emerald-600 font-medium mb-2">📍 @hotel.Neighborhood</p>
+                    <p class="text-sm text-gray-500 flex-1 mb-4">@hotel.Description</p>
+                    <div class="flex items-center justify-between pt-3 border-t border-gray-100">
+                        <span class="text-sm text-gray-500">
+                            ⭐ @hotel.Rating / 5.0
+                        </span>
+                        <span class="text-lg font-bold text-emerald-700">
+                            From $@cheapest<span class="text-xs font-normal text-gray-400">/night</span>
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </a>
+    }
+</div>
