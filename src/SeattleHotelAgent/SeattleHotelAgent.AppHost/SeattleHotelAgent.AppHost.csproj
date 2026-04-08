@@ -1,0 +1,19 @@
+<Project Sdk="Aspire.AppHost.Sdk/13.2.1">
+
+  <ItemGroup>
+    <ProjectReference Include="..\SeattleHotelAgent.Api\SeattleHotelAgent.Api.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Aspire.Hosting.Foundry" Version="13.2.1-preview.1.26180.6" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <UserSecretsId>2791483e-f914-45d0-a53d-d91e2f62f467</UserSecretsId>
+  </PropertyGroup>
+
+</Project>

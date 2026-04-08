@@ -1,0 +1,46 @@
+@SeattleHotelAgent.Api_HostAddress = http://localhost:5006
+
+### List all hotels
+GET {{SeattleHotelAgent.Api_HostAddress}}/api/hotels
+Accept: application/json
+
+###
+
+### Get a specific hotel
+GET {{SeattleHotelAgent.Api_HostAddress}}/api/hotels/pike-place-suites
+Accept: application/json
+
+###
+
+### Chat with the hotel concierge
+POST {{SeattleHotelAgent.Api_HostAddress}}/api/chat
+Content-Type: application/json
+
+{
+  "message": "I'm looking for a hotel near Pike Place Market for 2 nights this weekend. Budget is around $300/night."
+}
+
+###
+
+### Search for budget-friendly hotels
+POST {{SeattleHotelAgent.Api_HostAddress}}/api/chat
+Content-Type: application/json
+
+{
+  "message": "What are the most affordable hotels in Seattle? I need a room for 4 guests."
+}
+
+###
+
+### Book a hotel room
+POST {{SeattleHotelAgent.Api_HostAddress}}/api/chat
+Content-Type: application/json
+
+{
+  "message": "I'd like to book a Deluxe King room at the Ballard Nordic Lodge for John Smith, checking in 2026-05-10 and checking out 2026-05-12."
+}
+
+###
+
+### Health check
+GET {{SeattleHotelAgent.Api_HostAddress}}/health
