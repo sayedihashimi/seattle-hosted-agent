@@ -1,18 +1,20 @@
 # Seattle Hotel Booking Agent
 
-An AI-powered hotel booking agent built with C#, .NET Aspire, and Azure AI Foundry. The agent uses natural language to help travelers search for hotels, check availability, and book rooms in Seattle.
+An AI-powered hotel booking agent built with C# and Azure AI Foundry. The agent uses natural language to help travelers search for hotels, check availability, and book rooms in Seattle.
 
 ## What's Inside
 
-- **`src/sample-hosted-agent/`** — Hosted Agent version: Foundry Agent Service using the Responses protocol
+- **`src/sample-hosted-agent/`** — Hosted Agent version: Foundry Agent Service using the Responses protocol (with Aspire)
+- **`src/sample-hosted-agent-no-aspire/`** — Hosted Agent version: Same Responses protocol agent, without Aspire
 - **`src/sample-aca/`** — ACA version: .NET 10 Aspire app with custom REST API endpoints
-- **`tutorials/`** — Step-by-step Quick Start tutorials for both approaches
+- **`tutorials/`** — Step-by-step Quick Start tutorials for each approach
 
 ## Quick Start
 
 Follow one of the tutorials, or jump straight into the code:
 
-- [Hosted Agent Quick Start](tutorials/quickstart-hosted-agent.md) — Foundry Hosted Agent using the Responses protocol
+- [Hosted Agent Quick Start](tutorials/quickstart-hosted-agent.md) — Foundry Hosted Agent using the Responses protocol (with Aspire)
+- [Hosted Agent Quick Start (No Aspire)](tutorials/quickstart-hosted-agent-no-aspire.md) — Foundry Hosted Agent without Aspire
 - [ACA Quick Start](tutorials/quickstart-aca.md) — Custom REST API deployed to Azure Container Apps
 
 ### Prerequisites
@@ -44,11 +46,12 @@ Invoke-RestMethod -Uri "http://localhost:PORT/api/chat" -Method Post `
 
 | Technology | Purpose |
 |---|---|
-| [.NET Aspire](https://learn.microsoft.com/dotnet/aspire) | Service orchestration, OpenTelemetry, health checks |
 | [Azure AI Foundry](https://learn.microsoft.com/azure/ai-foundry) | GPT-4o-mini model inference |
 | [Microsoft.Extensions.AI](https://learn.microsoft.com/dotnet/ai/ai-extensions) | `IChatClient` abstraction, tool/function calling |
 | [Azure.AI.OpenAI](https://www.nuget.org/packages/Azure.AI.OpenAI) | Azure OpenAI SDK |
 | [DefaultAzureCredential](https://learn.microsoft.com/dotnet/azure/sdk/authentication) | Keyless authentication |
+| [.NET Aspire](https://learn.microsoft.com/dotnet/aspire) | Service orchestration, OpenTelemetry (ACA and hosted-agent samples) |
+| [Azure AI AgentServer](https://learn.microsoft.com/dotnet/api/overview/azure/ai.agentserver.agentframework-readme) | Responses protocol server (hosted-agent samples) |
 
 ## API Endpoints
 

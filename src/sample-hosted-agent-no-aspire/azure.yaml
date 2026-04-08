@@ -1,0 +1,11 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/main/schemas/v1.0/azure.yaml.json
+
+name: seattle-hotel-agent-no-aspire
+services:
+  agent:
+    language: dotnet
+    project: ./SeattleHotelAgent.Hosted.NoAspire
+    host: containerapp
+    docker:
+      path: ./SeattleHotelAgent.Hosted.NoAspire/Dockerfile
+      context: ./SeattleHotelAgent.Hosted.NoAspire

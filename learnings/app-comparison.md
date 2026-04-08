@@ -5,7 +5,8 @@ This document compares three different approaches to building AI agents with Azu
 | App | Description | Location |
 |---|---|---|
 | **Hotel Agent (ACA)** | Single conversational agent deployed to Azure Container Apps | `src/sample-aca/` |
-| **Hotel Agent (Hosted)** | Same agent using Foundry Agent Service + Responses protocol | `src/sample-hosted-agent/` |
+| **Hotel Agent (Hosted)** | Same agent using Foundry Agent Service + Responses protocol (with Aspire) | `src/sample-hosted-agent/` |
+| **Hotel Agent (Hosted, No Aspire)** | Same hosted agent without Aspire — single console project | `src/sample-hosted-agent-no-aspire/` |
 | **ClaimsAgent** | Multi-agent workflow with persistent Foundry audit agent | [github.com/JeremyLikness/foundrytest](https://github.com/JeremyLikness/foundrytest) |
 
 ## Feature Comparison

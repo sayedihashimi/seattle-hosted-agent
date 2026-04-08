@@ -1,0 +1,20 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <UserSecretsId>891e0390-49ea-4c14-92ea-122dc9e0520f</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Azure.AI.AgentServer.AgentFramework" Version="1.0.0-beta.9" />
+    <PackageReference Include="Azure.AI.OpenAI" Version="2.5.0-beta.1" />
+    <PackageReference Include="Azure.Identity" Version="1.20.0" />
+    <PackageReference Include="Microsoft.Agents.AI.OpenAI" Version="1.0.0-rc1" />
+    <PackageReference Include="Microsoft.Extensions.AI" Version="10.3.0" />
+    <PackageReference Include="Microsoft.Extensions.AI.OpenAI" Version="10.3.0" />
+  </ItemGroup>
+
+</Project>
