@@ -9,10 +9,10 @@
     <p class="text-gray-500 mb-6">Ask about hotels, check availability, or book a room in Seattle.</p>
 
     <!-- Conversation -->
-    <div class="bg-white rounded-lg shadow-sm border border-gray-200 mb-6 min-h-[200px] max-h-[500px] overflow-y-auto">
+    <div id="chatLog" class="bg-white rounded-lg shadow-sm border border-gray-200 mb-6 min-h-[200px] max-h-[500px] overflow-y-auto">
         @if (Model.Conversation.Count == 0)
         {
-            <div class="p-8 text-center text-gray-400">
+            <div id="emptyState" class="p-8 text-center text-gray-400">
                 <p class="text-4xl mb-3">💬</p>
                 <p>Start a conversation! Try asking:</p>
                 <p class="text-sm mt-2 italic">"Find me a hotel near Pike Place Market for 2 guests"</p>
@@ -47,8 +47,9 @@
     </div>
 
     <!-- Input -->
-    <form method="post" class="flex gap-3">
+    <form id="chatForm" method="post" class="flex gap-3">
         <input type="text"
+               id="userInput"
                name="userMessage"
                value="@Model.PrefilledMessage"
                placeholder="Ask about hotels in Seattle..."
@@ -57,8 +58,15 @@
                autofocus
                autocomplete="off" />
         <button type="submit"
-                class="bg-emerald-600 text-white px-6 py-3 rounded-lg text-sm font-medium hover:bg-emerald-700 transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2">
-            Send
+                id="sendBtn"
+                class="bg-emerald-600 text-white px-6 py-3 rounded-lg text-sm font-medium hover:bg-emerald-700 transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed">
+            <span id="sendText">Send</span>
+            <span id="sendSpinner" class="hidden">
+                <svg class="animate-spin h-5 w-5 inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                </svg>
+            </span>
         </button>
     </form>
 
@@ -79,3 +87,66 @@
         </form>
     }
 </div>
+
+@section Scripts {
+<script>
+    document.getElementById('chatForm').addEventListener('submit', function () {
+        const input = document.getElementById('userInput');
+        const message = input.value.trim();
+        if (!message) return;
+
+        // Remove empty state if present
+        const emptyState = document.getElementById('emptyState');
+        if (emptyState) emptyState.remove();
+
+        const chatLog = document.getElementById('chatLog');
+
+        // Ensure there's a container div for messages
+        let container = chatLog.querySelector('.divide-y');
+        if (!container) {
+            container = document.createElement('div');
+            container.className = 'divide-y divide-gray-100';
+            chatLog.appendChild(container);
+        }
+
+        // Add user message immediately
+        const userDiv = document.createElement('div');
+        userDiv.className = 'p-4 bg-emerald-50';
+        userDiv.innerHTML = `<div class="flex items-start gap-3"><span class="text-lg">👤</span><div class="text-sm text-gray-800">${message.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div></div>`;
+        container.appendChild(userDiv);
+
+        // Add typing indicator
+        const typingDiv = document.createElement('div');
+        typingDiv.className = 'p-4';
+        typingDiv.innerHTML = `
+            <div class="flex items-start gap-3">
+                <span class="text-lg">🏨</span>
+                <div class="flex items-center gap-1 py-1">
+                    <span class="w-2 h-2 bg-emerald-400 rounded-full animate-bounce" style="animation-delay: 0ms"></span>
+                    <span class="w-2 h-2 bg-emerald-400 rounded-full animate-bounce" style="animation-delay: 150ms"></span>
+                    <span class="w-2 h-2 bg-emerald-400 rounded-full animate-bounce" style="animation-delay: 300ms"></span>
+                </div>
+            </div>`;
+        container.appendChild(typingDiv);
+
+        // Scroll to bottom
+        chatLog.scrollTop = chatLog.scrollHeight;
+
+        // Disable send button and show spinner
+        const sendBtn = document.getElementById('sendBtn');
+        sendBtn.disabled = true;
+        document.getElementById('sendText').classList.add('hidden');
+        document.getElementById('sendSpinner').classList.remove('hidden');
+
+        // Disable input
+        input.readOnly = true;
+        input.classList.add('opacity-50');
+    });
+
+    // Auto-scroll to bottom on page load if there are messages
+    const chatLog = document.getElementById('chatLog');
+    if (chatLog.scrollHeight > chatLog.clientHeight) {
+        chatLog.scrollTop = chatLog.scrollHeight;
+    }
+</script>
+}
