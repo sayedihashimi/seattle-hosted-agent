@@ -5,7 +5,7 @@ An AI-powered hotel booking agent built with C# and Azure AI Foundry. The agent 
 ## What's Inside
 
 - **`src/sample-hosted-agent/`** — Hosted Agent version: Foundry Agent Service using the Responses protocol (with Aspire)
-- **`src/sample-hosted-agent-no-aspire/`** — Hosted Agent version: Same Responses protocol agent, without Aspire
+- **`src/sample-hosted-agent-no-aspire/`** — Hosted Agent version: Same Responses protocol agent, without Aspire (includes Razor Pages web client)
 - **`src/sample-aca/`** — ACA version: .NET 10 Aspire app with custom REST API endpoints
 - **`tutorials/`** — Step-by-step Quick Start tutorials for each approach
 

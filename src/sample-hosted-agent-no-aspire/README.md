@@ -103,13 +103,42 @@ src/sample-hosted-agent-no-aspire/
 │   ├── main.bicep
 │   ├── main.parameters.json
 │   └── resources.bicep
-└── SeattleHotelAgent.Hosted.NoAspire/      # The agent
-    ├── Program.cs                          # Agent setup + RunAIAgentAsync
-    ├── agent.yaml                          # Foundry Agent Service manifest
-    ├── Dockerfile
-    ├── Models/HotelData.cs                 # Fake hotel data
-    ├── Models/HotelModels.cs               # Data models
-    └── Tools/HotelTools.cs                 # AI tool functions
+├── SeattleHotelAgent.Hosted.NoAspire/      # The agent
+│   ├── Program.cs                          # Agent setup + RunAIAgentAsync
+│   ├── agent.yaml                          # Foundry Agent Service manifest
+│   ├── Dockerfile
+│   ├── Models/HotelData.cs                 # Fake hotel data
+│   ├── Models/HotelModels.cs               # Data models
+│   └── Tools/HotelTools.cs                 # AI tool functions
+└── SeattleHotelAgent.Hosted.NoAspire.Web/  # Razor Pages web client
+    ├── Program.cs                          # Web app setup
+    ├── Services/AgentService.cs            # Proxy to agent /responses
+    ├── Pages/Index.cshtml                  # Chat page
+    ├── Pages/Hotels/Index.cshtml           # Hotel listing
+    └── Pages/Hotels/Detail.cshtml          # Hotel details
+```
+
+## Web Client
+
+A Razor Pages web app is included for interacting with the agent through a browser instead of terminal commands. It provides a chat page, a hotel listing, and hotel detail pages.
+
+To use it, start the agent first, then the web app in a second terminal:
+
+```powershell
+# Terminal 1 — start the agent
+dotnet run --project SeattleHotelAgent.Hosted.NoAspire
+
+# Terminal 2 — start the web client
+dotnet run --project SeattleHotelAgent.Hosted.NoAspire.Web
+```
+
+Then open `http://localhost:5148` in your browser.
+
+To point the web client at the deployed agent instead of localhost:
+
+```powershell
+$env:AgentEndpoint = "https://YOUR-APP.azurecontainerapps.io"
+dotnet run --project SeattleHotelAgent.Hosted.NoAspire.Web
 ```
 
 ## Troubleshooting
